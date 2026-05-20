@@ -59,6 +59,8 @@ The plugins are designed to work with an existing Volatility 3 installation. Fol
 
 Ali, H., Case, A., & Ahmed, I. (2025). Memory Analysis of the Python Runtime Environment. Forensic Science International: Digital Investigation, 53, 301920. https://doi.org/10.1016/j.fsidi.2025.301920
 
+
 ## Tạo .env để chạy  python3 finalize_report.py report.json
 OPENROUTER_API_KEY='your api key'
+
 GEMINI_API_KEY='your api key'
