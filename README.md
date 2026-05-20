@@ -61,6 +61,6 @@ Ali, H., Case, A., & Ahmed, I. (2025). Memory Analysis of the Python Runtime Env
 
 
 ## Tạo .env để chạy  python3 finalize_report.py report.json
-OPENROUTER_API_KEY='your api key'
+OPENROUTER_API_KEY="your-api-key"
 
-GEMINI_API_KEY='your api key'
+OPENROUTER_MODEL=openai/gpt-oss-20b
