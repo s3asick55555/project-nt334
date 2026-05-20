@@ -7,6 +7,7 @@ from volatility3.framework.symbols.generic.types.python.python_symbol_table impo
 import time
 import json
 import dis
+import types
 
 class Py_Report(interfaces.plugins.PluginInterface):
     """
@@ -655,6 +656,46 @@ class Py_Report(interfaces.plugins.PluginInterface):
         - is_jump_target: Whether this instruction is a jump destination (e.g., False)
       """
       
+      def make_json_serializable(obj):
+          """
+          Convert non-JSON-serializable objects to serializable representations.
+          
+          This function handles built-in functions, methods, code objects, and other
+          Python objects that cannot be directly serialized to JSON.
+          
+          Args:
+              obj: Any Python object
+              
+          Returns:
+              A JSON-serializable representation of the object
+          """
+          # Check if object is already JSON-serializable
+          if obj is None or isinstance(obj, (bool, int, float, str, list, dict, tuple)):
+              return obj
+          
+          # Handle tuples by recursively converting elements
+          if isinstance(obj, tuple):
+              try:
+                  return tuple(make_json_serializable(item) for item in obj)
+              except Exception:
+                  return str(obj)
+          
+          # Handle built-in functions and methods
+          if isinstance(obj, (types.BuiltinFunctionType, types.BuiltinMethodType, types.MethodType, types.FunctionType)):
+              return str(obj)
+          
+          # Handle code objects
+          if isinstance(obj, types.CodeType):
+              return f"<code object {obj.co_name}>"
+          
+          # Handle other non-serializable types
+          try:
+              json.dumps(obj)
+              return obj
+          except (TypeError, ValueError):
+              # If it's not serializable, convert to string
+              return str(obj)
+      
       # Validate code object
       if not code:
           return "<invalid code object: None>"
@@ -713,6 +754,9 @@ class Py_Report(interfaces.plugins.PluginInterface):
                             argval = f'<invalid name index {arg}>'
                     else:
                         argval = '<no co_names>'
+                
+                # Sanitize argval to ensure JSON serializability
+                argval = make_json_serializable(argval)
 
                 instructions.append({"offset": instr.offset, "opname": opname, "argval":argval})
 
@@ -1075,7 +1119,51 @@ class Py_Report(interfaces.plugins.PluginInterface):
             "code_objects": code_objects
         }
         
-        return output
+        # Sanitize the entire output to ensure JSON serializability
+        return self._sanitize_for_json(output)
+    
+    def _sanitize_for_json(self, obj):
+        """
+        Recursively sanitize an object to ensure it's JSON-serializable.
+        
+        Converts non-serializable objects to string representations or removes them.
+        
+        Args:
+            obj: Object to sanitize (can be dict, list, tuple, or any Python object)
+            
+        Returns:
+            A JSON-serializable version of the object
+        """
+        if obj is None or isinstance(obj, (bool, int, float, str)):
+            return obj
+        
+        if isinstance(obj, (list, tuple)):
+            return [self._sanitize_for_json(item) for item in obj]
+        
+        if isinstance(obj, dict):
+            sanitized = {}
+            for key, value in obj.items():
+                try:
+                    # Ensure key is a string
+                    key_str = str(key)
+                    # Recursively sanitize the value
+                    sanitized[key_str] = self._sanitize_for_json(value)
+                except Exception:
+                    # Skip items that can't be processed
+                    continue
+            return sanitized
+        
+        # For other types, try to serialize; if it fails, convert to string
+        try:
+            json.dumps(obj)
+            return obj
+        except (TypeError, ValueError):
+            # Check if it's a built-in function or method
+            if isinstance(obj, (types.BuiltinFunctionType, types.BuiltinMethodType, 
+                               types.MethodType, types.FunctionType, types.CodeType)):
+                return str(obj)
+            # For any other non-serializable type, convert to string
+            return str(obj)
     
     def _generator(self, summary_data):
         """Generate output rows for summary counts"""
