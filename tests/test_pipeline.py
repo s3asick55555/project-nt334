@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from malware_analysis.agents import ArtifactInspectorAgent, BytecodeReverserAgent
+from malware_analysis.compiler import ReportCompiler
 from malware_analysis.orchestrator import AnalysisPipeline
 from malware_analysis.router import DataIngestionRouter
 from malware_analysis.schemas import ArtifactReport, FinalReport, IOC
@@ -109,6 +110,7 @@ class PipelineTests(unittest.TestCase):
                 router=DataIngestionRouter(),
                 artifact_agent=ArtifactInspectorAgent(client=client),
                 bytecode_agent=BytecodeReverserAgent(client=client),
+                compiler=ReportCompiler(),
             )
 
             progress_messages: list[str] = []
@@ -118,8 +120,8 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(result.structured_report.summary, 'Synthetic report')
             self.assertIn('## Key IOCs', result.final_report)
             self.assertEqual(len(client.json_calls), 2)
-            self.assertEqual(client.json_calls[0]['model'], 'gemini-2.5-flash')
-            self.assertEqual(client.json_calls[1]['model'], 'openai/gpt-oss-120b:free')
+            self.assertEqual(client.json_calls[0]['model'], 'openai/gpt-5.1')
+            self.assertEqual(client.json_calls[1]['model'], 'openai/gpt-5.1')
             self.assertIn('artifact_report', client.json_calls[1]['payload'])
             self.assertEqual(
                 progress_messages,
